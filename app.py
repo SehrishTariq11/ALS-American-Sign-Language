@@ -14,7 +14,7 @@ img_file = st.camera_input("Take a picture")
 
 if img_file is not None:
     image = Image.open(img_file)
-    st.image(image, caption="Captured Image", use_column_width=True)
+   
 
     # Convert to OpenCV
     image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
@@ -33,3 +33,4 @@ if img_file is not None:
         st.success(f"✅ Detected Letter: {class_name}")
     else:
         st.warning("⚠️ No hand sign detected. Try again!")
+
