@@ -1,70 +1,35 @@
 import streamlit as st
 from ultralytics import YOLO
-import cv2
+from PIL import Image
 import numpy as np
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
+import cv2
 
-# -----------------------------------
-# Streamlit page setup
-# -----------------------------------
-st.set_page_config(page_title="ASL Live Detection", layout="wide")
-st.title("🖐️ Real-Time American Sign Language Detection")
-st.write("Show your hand sign in front of the webcam. The model will predict the corresponding alphabet.")
+st.title("🖐️ ASL Detection (Streamlit Cloud Compatible)")
 
-# -----------------------------------
 # Load YOLO model
-# -----------------------------------
-model = YOLO("best.pt")  # path to your trained model
-st.sidebar.success("✅ YOLOv8 model loaded successfully!")
+model = YOLO("best.pt")
 
-# -----------------------------------
-# Define video processor
-# -----------------------------------
-class ASLProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.predicted_letter = ""
+# Take a picture using Streamlit's camera input
+img_file = st.camera_input("Take a picture")
 
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
+if img_file is not None:
+    image = Image.open(img_file)
+    st.image(image, caption="Captured Image", use_column_width=True)
 
-        # Run YOLO prediction
-        results = model.predict(img, verbose=False)
+    # Convert to OpenCV
+    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-        # Draw bounding boxes and labels
-        annotated_frame = results[0].plot()
+    # YOLO prediction
+    results = model.predict(image_cv)
+    annotated_frame = results[0].plot()
+    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+    st.image(annotated_frame, caption="Prediction", use_column_width=True)
 
-        # Extract class name if any detection found
-        boxes = results[0].boxes
-        if boxes is not None and len(boxes) > 0:
-            class_id = int(boxes.cls[0])
-            self.predicted_letter = model.names[class_id]
-        else:
-            self.predicted_letter = "No detection"
-
-        return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
-
-
-# -----------------------------------
-# WebRTC Configuration
-# -----------------------------------
-RTC_CONFIGURATION = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)
-
-# -----------------------------------
-# Run live webcam stream
-# -----------------------------------
-ctx = webrtc_streamer(
-    key="asl-detection",
-    mode="sendrecv",
-    rtc_configuration=RTC_CONFIGURATION,
-    video_processor_factory=ASLProcessor,
-    media_stream_constraints={"video": True, "audio": False},
-)
-
-# -----------------------------------
-# Display current predicted letter
-# -----------------------------------
-if ctx.video_processor:
-    st.markdown("### 🔠 **Detected Alphabet (Live)**")
-    st.text_input("Current Letter:", value=ctx.video_processor.predicted_letter)
+    # Extract detected letter
+    boxes = results[0].boxes
+    if boxes is not None and len(boxes) > 0:
+        class_id = int(boxes.cls[0])
+        class_name = model.names[class_id]
+        st.success(f"✅ Detected Letter: {class_name}")
+    else:
+        st.warning("⚠️ No hand sign detected. Try again!")
