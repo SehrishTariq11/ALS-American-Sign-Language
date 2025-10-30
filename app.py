@@ -1,6 +1,3 @@
-
-
-
 import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
@@ -36,3 +33,4 @@ if img_file is not None:
         st.success(f"✅ Detected Letter: {class_name}")
     else:
         st.warning("⚠️ No hand sign detected. Try again!")
+
