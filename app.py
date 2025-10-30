@@ -79,6 +79,44 @@ if uploaded_file:
         st.image(temp_path, caption="📸 Uploaded Image", use_container_width=True)
         st.write("Analyzing image... 🔍")
 
-        results =
+        results = model.predict(temp_path, verbose=False)
+        annotated = results[0].plot()
+        annotated_rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+        st.image(annotated_rgb, caption="🧠 Detection Result", use_container_width=True)
 
+        detected = [model.names[int(box.cls)] for box in results[0].boxes]
+        if detected:
+            letter = detected[0]
+            st.success(f"✅ Detected Letter: **{letter}**")
+            st.info(asl_meanings.get(letter, "Meaning not found for this letter."))
+        else:
+            st.warning("⚠️ No sign detected. Try a clearer image or better lighting.")
 
+    # ---------------------------
+    # VIDEO Processing
+    # ---------------------------
+    elif file_ext in ["mp4", "mov", "avi"]:
+        st.video(temp_path)
+        st.write("Analyzing video... please wait ⏳")
+
+        cap = cv2.VideoCapture(temp_path)
+        detected_letters = []
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            results = model.predict(frame, verbose=False)
+            detected = [model.names[int(box.cls)] for box in results[0].boxes]
+            if detected:
+                detected_letters.append(detected[0])
+
+        cap.release()
+
+        if detected_letters:
+            final_letter = max(set(detected_letters), key=detected_letters.count)
+            st.success(f"✅ Detected Letter: **{final_letter}**")
+            st.info(asl_meanings.get(final_letter, "Meaning not found for this letter."))
+        else:
+            st.warning("⚠️ No signs detected in the video. Try again with a clearer video.")
