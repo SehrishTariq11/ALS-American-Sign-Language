@@ -1,99 +1,43 @@
 import streamlit as st
 from ultralytics import YOLO
 import cv2
-import numpy as np
 from PIL import Image
-import tempfile
-import os
+import numpy as np
 
-# ---------------------- Streamlit Setup ----------------------
-st.set_page_config(page_title="ASL Sign Language Translator", layout="wide")
-st.title("🤟 American Sign Language (ASL) → Text Translator")
-st.write("Upload an image or use your webcam to detect hand signs and translate them into letters.")
+st.set_page_config(page_title="ASL Detection with Webcam", layout="wide")
 
-# ---------------------- Load YOLO Model ----------------------
-MODEL_PATH = "best.pt"
+# ------------------------------
+# Load your trained YOLOv8 model
+# Use the path where your trained weights are stored
+# Example: after training, best.pt is in /content/runs/detect/train2/weights/best.pt
+# ------------------------------
+model = YOLO("/content/runs/detect/train2/weights/best.pt")
 
-if not os.path.exists(MODEL_PATH):
-    st.error("❌ Model file not found. Please upload your trained YOLO model as `best.pt` in the same directory.")
-    st.stop()
+st.title("American Sign Language Detection")
+st.write("Use your webcam to capture gestures, and YOLOv8 will detect them.")
 
-model = YOLO(MODEL_PATH)
-st.success("✅ YOLO model loaded successfully!")
+# ------------------------------
+# Webcam input
+# ------------------------------
+img_file_buffer = st.camera_input("Take a picture")
 
-# ---------------------- App Mode Selection ----------------------
-mode = st.radio("Select Mode:", ["📷 Image Upload", "🎥 Live Webcam"], horizontal=True)
+if img_file_buffer is not None:
+    # Convert to PIL Image
+    image = Image.open(img_file_buffer)
+    st.image(image, caption='Captured Image', use_column_width=True)
 
-# ---------------------- IMAGE UPLOAD MODE ----------------------
-if mode == "📷 Image Upload":
-    uploaded_file = st.file_uploader("Upload an Image of a Hand Sign", type=["jpg", "jpeg", "png"])
+    # Convert PIL Image to OpenCV format
+    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    # ------------------------------
+    # YOLOv8 prediction
+    # ------------------------------
+    results = model.predict(image_cv)
 
-        # Read image
-        img = Image.open(uploaded_file)
-        img_array = np.array(img)
+    # Annotate prediction
+    annotated_frame = results[0].plot()
+    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+    st.image(annotated_frame, caption='Prediction', use_column_width=True)
 
-        # Run detection
-        results = model.predict(img_array, verbose=False)
-        annotated_frame = results[0].plot()
-        annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
 
-        # Extract detected sign
-        detected_classes = [model.names[int(box.cls)] for box in results[0].boxes]
-        if detected_classes:
-            st.subheader(f"🧠 Detected Sign: **{detected_classes[0]}**")
-        else:
-            st.warning("⚠️ No sign detected in this image.")
-
-        # Display annotated image
-        st.image(annotated_frame, caption="Detected Result", use_column_width=True)
-
-# ---------------------- WEBCAM MODE ----------------------
-elif mode == "🎥 Live Webcam":
-    st.info("Click the checkbox below to start your webcam and show ASL hand signs!")
-
-    run = st.checkbox("✅ Start Webcam")
-    FRAME_WINDOW = st.image([])
-    detected_text = ""
-
-    if run:
-        cap = cv2.VideoCapture(0)
-        st.write("📹 Webcam started — show your ASL signs!")
-
-        while run:
-            ret, frame = cap.read()
-            if not ret:
-                st.warning("⚠️ Could not access webcam.")
-                break
-
-            # Run YOLO prediction
-            results = model.predict(frame, verbose=False)
-            annotated_frame = results[0].plot()
-            annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-
-            # Get detected classes (signs)
-            detected_classes = [model.names[int(box.cls)] for box in results[0].boxes]
-            if detected_classes:
-                letter = detected_classes[0]
-                # Avoid repeating same letter continuously
-                if len(detected_text) == 0 or detected_text[-1] != letter:
-                    detected_text += letter
-
-            # Display frame and detected text
-            FRAME_WINDOW.image(annotated_frame, channels="RGB")
-            st.text_area("📝 Detected Alphabets:", detected_text, height=120)
-
-            # Stop button
-            stop = st.button("🛑 Stop Webcam")
-            if stop:
-                break
-
-        cap.release()
-        st.success("✅ Webcam stopped.")
-    else:
-        st.info("👆 Turn on the checkbox to start webcam.")
-
-st.caption("Developed by Sehrish Tariq 💻 | YOLOv8-powered ASL Detection")
 
