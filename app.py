@@ -1,43 +1,53 @@
 import streamlit as st
 from ultralytics import YOLO
 import cv2
-import tempfile
 import numpy as np
 
-st.title("Real-Time ASL Detection")
-st.write("Webcam captures your gestures and predicts the corresponding alphabet.")
+st.set_page_config(page_title="ASL to Text Translator", layout="wide")
 
-# Load your trained YOLOv8 model
-model = YOLO("best.pt")  # replace with your model path
+st.title("🤟 American Sign Language (ASL) to Text Translator")
+st.write("This app uses YOLOv8 to detect ASL signs in real time from your webcam and convert them into text.")
 
-# Webcam capture
-FRAME_WINDOW = st.image([])
+# Load YOLO model
+model = YOLO("best.pt")  # replace with your trained model file
 
-# OpenCV video capture
-cap = cv2.VideoCapture(0)  # 0 = default webcam
+# Initialize webcam
+cap = cv2.VideoCapture(0)
+frame_placeholder = st.empty()
+text_placeholder = st.empty()
 
-st.write("Press 'Stop' to end the session.")
-stop_button = st.button("Stop")
+detected_text = ""  # stores recognized letters
 
-while cap.isOpened() and not stop_button:
+st.write("▶️ The webcam is now running... make sure your camera permission is allowed.")
+
+stop_btn = st.button("🛑 Stop Stream")
+
+while cap.isOpened() and not stop_btn:
     ret, frame = cap.read()
     if not ret:
-        st.write("Failed to grab frame")
+        st.warning("Failed to access the webcam.")
         break
 
-    # YOLO prediction
+    # Predict with YOLO
     results = model.predict(frame, verbose=False)
 
-    # Annotate frame
+    # Annotate video frame
     annotated_frame = results[0].plot()
-    
-    # Convert BGR to RGB for Streamlit
     annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-    
-    # Show video frame
-    FRAME_WINDOW.image(annotated_frame)
-    
-    # Extract detected class names (alphabet letters)
+    frame_placeholder.image(annotated_frame, channels="RGB", use_column_width=True)
+
+    # Get class name(s) predicted
     detected_classes = [model.names[int(box.cls)] for box in results[0].boxes]
+
+    # Add detected letters to text box (if new)
     if detected_classes:
-        st.text(f"Detected Sign(s): {', '.join(detected_classes)}")
+        letter = detected_classes[0]
+        if len(detected_text) == 0 or detected_text[-1] != letter:
+            detected_text += letter
+
+    # Show text box
+    text_placeholder.text_area("📝 Detected Text:", detected_text, height=150)
+
+cap.release()
+st.success("✅ Stream stopped successfully!")
+
