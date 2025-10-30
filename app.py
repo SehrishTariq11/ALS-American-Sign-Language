@@ -3,41 +3,43 @@ from ultralytics import YOLO
 import cv2
 from PIL import Image
 import numpy as np
+import tempfile
 
-st.set_page_config(page_title="ASL Detection with Webcam", layout="wide")
+st.set_page_config(page_title="YOLO Object Detection", layout="centered")
 
-# ------------------------------
-# Load your trained YOLOv8 model
-# Use the path where your trained weights are stored
-# Example: after training, best.pt is in /content/runs/detect/train2/weights/best.pt
-# ------------------------------
-model = YOLO("best.pt")
+st.title("🧠 YOLO Object Detection App")
+st.write("Upload an image and let the YOLO model detect objects for you!")
 
-st.title("American Sign Language Detection")
-st.write("Use your webcam to capture gestures, and YOLOv8 will detect them.")
+# Load YOLO model
+@st.cache_resource
+def load_model():
+    return YOLO("yolov8n.pt")  # smallest pre-trained YOLO model
 
-# ------------------------------
-# Webcam input
-# ------------------------------
-img_file_buffer = st.camera_input("Take a picture")
+model = load_model()
 
-if img_file_buffer is not None:
-    # Convert to PIL Image
-    image = Image.open(img_file_buffer)
-    st.image(image, caption='Captured Image', use_column_width=True)
+# File uploader
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-    # Convert PIL Image to OpenCV format
-    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+if uploaded_file:
+    # Read image
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # ------------------------------
-    # YOLOv8 prediction
-    # ------------------------------
-    results = model.predict(image_cv)
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+        image.save(tmp_file.name)
+        tmp_path = tmp_file.name
 
-    # Annotate prediction
-    annotated_frame = results[0].plot()
-    annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-    st.image(annotated_frame, caption='Prediction', use_column_width=True)
+    # Run YOLO prediction
+    st.write("🔍 Running YOLO model...")
+    results = model.predict(source=tmp_path, conf=0.3)
+
+    # Get result image
+    result_img = results[0].plot()
+    st.image(result_img, caption="Detection Result", use_column_width=True)
+else:
+    st.info("Please upload an image to start detection.")
+
 
 
 
