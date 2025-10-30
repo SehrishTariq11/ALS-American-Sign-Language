@@ -11,7 +11,7 @@ st.set_page_config(page_title="ASL Detection with Webcam", layout="wide")
 # Use the path where your trained weights are stored
 # Example: after training, best.pt is in /content/runs/detect/train2/weights/best.pt
 # ------------------------------
-model = YOLO("/content/runs/detect/train2/weights/best.pt")
+model = YOLO("best.pt")
 
 st.title("American Sign Language Detection")
 st.write("Use your webcam to capture gestures, and YOLOv8 will detect them.")
@@ -38,3 +38,4 @@ if img_file_buffer is not None:
     annotated_frame = results[0].plot()
     annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
     st.image(annotated_frame, caption='Prediction', use_column_width=True)
+
