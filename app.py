@@ -3,6 +3,8 @@ from ultralytics import YOLO
 import cv2
 from PIL import Image
 import numpy as np
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 st.set_page_config(page_title="ASL Detection with Webcam", layout="wide")
 
@@ -38,3 +40,4 @@ if img_file_buffer is not None:
     annotated_frame = results[0].plot()
     annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
     st.image(annotated_frame, caption='Prediction', use_column_width=True)
+
