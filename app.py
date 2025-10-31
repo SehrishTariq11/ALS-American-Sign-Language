@@ -4,7 +4,7 @@ from PIL import Image
 import numpy as np
 import cv2
 
-st.title("🖐️ ASL Detection (Streamlit Cloud Compatible)")
+st.title(" ASL Detection (Streamlit Cloud Compatible)")
 
 # Load YOLO model
 model = YOLO("best.pt")
@@ -33,4 +33,5 @@ if img_file is not None:
         st.success(f"✅ Detected Letter: {class_name}")
     else:
         st.warning("⚠️ No hand sign detected. Try again!")
+
 
